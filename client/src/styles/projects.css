@@ -1,0 +1,884 @@
+/* ============================================================
+   PROJECTS PAGE — enterprise dashboard surface (.proj-*)
+   Presentation only. Every number rendered on this page comes from
+   the existing /pms/projects and /pms/dashboard/summary APIs; nothing
+   here fabricates data. Colours resolve through the design tokens, so
+   the whole surface themes light/dark with no per-theme rules.
+   ============================================================ */
+
+/* Tighter top/bottom than the app default — a dense enterprise list wants the
+   rows closer together. Left/right stays on --page-gutter so this page's edges
+   line up with the topbar and with every other page. */
+.projects-content {
+  padding: 10px var(--page-gutter);
+}
+
+/* ---- KPI strip ---- */
+.proj-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.proj-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.proj-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+  border-color: color-mix(in srgb, var(--kpi-accent, var(--primary)) 45%, var(--border));
+}
+
+.proj-kpi:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--kpi-accent, var(--primary)) 45%, transparent);
+}
+
+.proj-kpi.active {
+  border-color: var(--kpi-accent, var(--primary));
+  box-shadow: inset 0 0 0 1px var(--kpi-accent, var(--primary));
+}
+
+.proj-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.proj-kpi-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--kpi-accent, var(--primary));
+  background: color-mix(in srgb, var(--kpi-accent, var(--primary)) 14%, transparent);
+  flex-shrink: 0;
+}
+
+.proj-kpi-share {
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--kpi-accent, var(--primary));
+  background: color-mix(in srgb, var(--kpi-accent, var(--primary)) 12%, transparent);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+
+.proj-kpi-value {
+  font-size: 22px;
+  font-weight: 780;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.proj-kpi-label {
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+/* ---- Toolbar (chips + search + filters) ---- */
+/* ---- Attention banner ----
+   One line above the list naming what needs a decision. Replaced the six KPI
+   tiles, which spent a third of the first screen restating counts the chips
+   already carry. Warning-tinted because it only renders when something is
+   actually wrong; a permanently visible banner stops being read. */
+.proj-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  border-radius: var(--radius);
+}
+
+.proj-banner-icon {
+  color: var(--warning);
+  flex-shrink: 0;
+}
+
+.proj-banner-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.proj-banner-btn {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  background: var(--surface);
+  color: var(--warning);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition);
+}
+
+.proj-banner-btn:hover {
+  background: color-mix(in srgb, var(--warning) 14%, var(--surface));
+}
+
+.proj-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.proj-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.proj-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.proj-chip:hover {
+  border-color: var(--chip-accent, var(--primary));
+  color: var(--chip-accent, var(--primary));
+}
+
+.proj-chip.active {
+  border-color: var(--chip-accent, var(--primary));
+  color: var(--chip-accent, var(--primary));
+  background: color-mix(in srgb, var(--chip-accent, var(--primary)) 12%, transparent);
+}
+
+.proj-chip-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+/* ---- "More" lens overflow ---- */
+.proj-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 190px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.proj-more-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.proj-more-menu > button:hover {
+  background: var(--surface-2);
+}
+
+.proj-more-menu > button.active {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+}
+
+.proj-more-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.proj-more-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text-subtle);
+}
+
+/* ---- Condensed row cells ----
+   The Project cell now carries what Owner and Location used to occupy their
+   own columns for: an owner avatar, then name over `code · owner`. */
+.proj-cell-project {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.proj-sub {
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Progress carries the health signal as a word, which is what let the Health
+   column go. The percentage stays tabular so the column scans vertically. */
+.proj-progress-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-subtle);
+  white-space: nowrap;
+}
+
+.proj-sort-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  font-weight: 500;
+}
+
+.proj-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.proj-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 240px;
+  padding: 0 12px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.proj-search:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.proj-search input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.proj-filter-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.proj-filter-btn:hover { border-color: var(--border-strong); color: var(--text); }
+.proj-filter-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
+.proj-filter-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+/* ---- Filters popover ---- */
+.proj-filters-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 240px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---- Table ---- */
+.proj-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 340px);
+  border-radius: var(--radius);
+}
+
+.proj-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 7px 12px;
+}
+
+/* Denser rows than the shared .table default (12px 16px) — scoped to this
+   page's table only, so every other table in the app is untouched. */
+.proj-table td {
+  vertical-align: middle;
+  padding: 7px 12px;
+}
+
+.proj-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+}
+
+.proj-name { font-weight: 650; color: var(--text); }
+
+.proj-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.proj-loc-sub {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  margin-left: 19px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proj-progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.proj-progress-cell .progress { flex: 1; }
+
+.proj-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Mobile (<768px) card list — same row data as .proj-table, stacked
+   instead of squeezed into table columns. Only mounted by ProjectsPage.jsx
+   when useIsMobile() is true, so no media query gates it here. ---- */
+.proj-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.proj-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.proj-card:active {
+  background: var(--surface-hover);
+}
+
+.proj-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.proj-card-dates {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.proj-owner-name {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--text-muted);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Row action menu ---- */
+.proj-actions-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.proj-actions-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border); }
+
+.proj-row-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.proj-row-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.proj-row-menu button:hover { background: var(--surface-hover); }
+.proj-row-menu button svg { color: var(--text-subtle); flex-shrink: 0; }
+.proj-row-menu hr { border: none; border-top: 1px solid var(--border); margin: 4px 2px; }
+
+/* ---- Pagination ---- */
+.proj-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 4px 2px;
+}
+
+.proj-pager-info { font-size: 12.5px; color: var(--text-subtle); }
+
+.proj-pager-controls { display: flex; align-items: center; gap: 6px; }
+
+.proj-page-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-variant-numeric: tabular-nums;
+}
+
+.proj-page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.proj-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.proj-page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.proj-page-ellipsis { padding: 0 4px; color: var(--text-subtle); }
+
+.proj-page-size {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---- Error state ---- */
+.proj-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.proj-error-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 1200px) {
+  .proj-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .proj-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .proj-kpi-value { font-size: 22px; }
+  .proj-search { min-width: 0; flex: 1; }
+  .proj-table-wrap { max-height: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proj-kpi:hover { transform: none; }
+}
+
+/* ================================================================
+   PROPERTIES — the cross-launch property search.
+
+   Unlike the Projects list (a management view you scan), this page is a
+   lookup: someone arrives with a question — "what do we have in Pune under
+   ₹2L on the ground floor?" — so search is the widest element on the page and
+   the filters sit in one quiet row beneath it, not competing for attention.
+   ================================================================ */
+
+.prop-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 46px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.prop-searchbar:focus-within {
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
+
+.prop-searchbar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.prop-searchbar input::placeholder {
+  color: var(--text-subtle);
+}
+
+.prop-searchbar > button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-subtle);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.prop-searchbar > button:hover {
+  color: var(--text);
+}
+
+.prop-filterbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Label above the control, not beside it: five dropdowns in a row are
+   unreadable when each is prefixed by its own inline caption. */
+.prop-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.prop-filter-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  padding-left: 2px;
+}
+
+.prop-filter select {
+  height: 34px;
+  min-width: 130px;
+  max-width: 220px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  /* Caret drawn inline so the control needs no wrapper element. */
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 15px, calc(100% - 10px) 15px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.prop-filter select:hover {
+  border-color: var(--border-strong);
+}
+
+.prop-filter select:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring-primary);
+}
+
+.prop-summary {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-subtle);
+}
+
+.prop-summary b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.prop-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .prop-filter select { min-width: 0; width: 100%; }
+  .prop-filter { flex: 1 1 140px; }
+}
+
+/* ================================================================
+   APPROVALS QUEUE
+   One list of every decision waiting on the reader, across all launches.
+   ================================================================ */
+
+.apr-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.apr-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Bulk bar stays visible with nothing selected — the capability has to be
+   discoverable before it is needed, and an approver facing 238 items should
+   not have to guess that selecting rows is possible. */
+.apr-bulkbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  flex-wrap: wrap;
+}
+
+/* Partial-success report under the bulk bar: some ids moved, some didn't.
+   Full-width band rather than a toast — the user needs to read WHICH items
+   refused and why, which a disappearing notification can't carry. */
+.apr-bulk-result {
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--warning-soft);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.apr-bulk-result ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.apr-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 20px;
+  border-top: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+.apr-row:hover { background: var(--surface-hover); }
+.apr-row.selected { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+
+/* Only the text block navigates. The checkbox and the action buttons sit
+   outside it, so selecting or deciding never opens the record by accident. */
+.apr-main { flex: 1; min-width: 0; cursor: pointer; }
+
+.apr-meta-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+
+.apr-stage { font-size: 11.5px; color: var(--text-subtle); }
+
+.apr-type {
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.apr-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.apr-sub {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.apr-age {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.apr-foot {
+  padding: 11px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+/* Batch outcome. Success-toned by default because partial success is the
+   expected result, not a failure — another approver clearing an item between
+   page load and submit is normal, not an error to alarm anyone about. */
+.apr-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  background: color-mix(in srgb, var(--success) 9%, var(--surface));
+  font-size: 13px;
+  color: var(--text);
+}
+
+.apr-result.has-failures {
+  border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+}
+
+.apr-result > button {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  font: inherit;
+}
+
+.apr-result > button:hover { color: var(--text); }

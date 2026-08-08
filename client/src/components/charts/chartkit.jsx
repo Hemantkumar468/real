@@ -1,0 +1,250 @@
+/**
+ * Small Recharts wrappers pre-styled to the Vault design system so every chart
+ * across the app shares one look (themed tooltip, brand colors, tabular numbers).
+ */
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  Area,
+  AreaChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+} from 'recharts';
+import { CHART_COLORS } from '../../lib/ui.js';
+
+const axisProps = {
+  tick: { fill: 'var(--text-subtle)', fontSize: 11 },
+  tickLine: false,
+  axisLine: { stroke: 'var(--border)' },
+};
+
+export function ChartTooltip({ active, payload, label, valueSuffix = '' }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border-strong)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-2)',
+        padding: '8px 12px',
+        fontSize: 12.5,
+      }}
+    >
+      {label != null && <div style={{ fontWeight: 650, marginBottom: 4 }}>{label}</div>}
+      {payload.map((p) => (
+        <div key={p.dataKey || p.name} className="row gap-2" style={{ justifyContent: 'space-between' }}>
+          <span className="row gap-2 muted">
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color || p.payload?.color }} />
+            {p.name}
+          </span>
+          <span className="tabular" style={{ fontWeight: 600 }}>
+            {p.value}
+            {valueSuffix}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function DonutChart({ data, height = 220, innerRadius = 58, outerRadius = 84, centerLabel }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <div style={{ position: 'relative' }}>
+      <ResponsiveContainer width="100%" height={height}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={innerRadius}
+            outerRadius={outerRadius}
+            paddingAngle={2}
+            stroke="none"
+          >
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip content={<ChartTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+      {centerLabel && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'grid',
+            placeItems: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          <div className="center col">
+            <div style={{ fontSize: 26, fontWeight: 750 }} className="tabular">{centerLabel.value ?? total}</div>
+            <div className="tiny muted upper">{centerLabel.label}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Static 4-axis diamond grid — used for the empty (all-zero) radar so recharts'
+ *  zero-width first paint can't emit degenerate paths. Matches the live radar's look. */
+function EmptyRadar({ data, height }) {
+  const cx = 130;
+  const cy = 105;
+  const R = 85;
+  const pt = (r, i) => {
+    // i: 0 top, 1 right, 2 bottom, 3 left
+    if (i === 0) return `${cx},${cy - r}`;
+    if (i === 1) return `${cx + r},${cy}`;
+    if (i === 2) return `${cx},${cy + r}`;
+    return `${cx - r},${cy}`;
+  };
+  const ring = (r) => [0, 1, 2, 3].map((i) => pt(r, i)).join(' ');
+  const labels = data.map((d) => d.axis);
+  return (
+    <svg viewBox="0 0 260 220" width="100%" height={height} role="img" aria-label="Score radar (no data yet)">
+      {[0.25, 0.5, 0.75, 1].map((f) => (
+        <polygon key={f} points={ring(R * f)} fill="none" stroke="var(--border)" />
+      ))}
+      <line x1={cx} y1={cy - R} x2={cx} y2={cy + R} stroke="var(--border)" />
+      <line x1={cx - R} y1={cy} x2={cx + R} y2={cy} stroke="var(--border)" />
+      <text x={cx} y={cy - R - 7} textAnchor="middle" fontSize="10" fill="var(--text-subtle)">{labels[0]}</text>
+      <text x={cx + R + 6} y={cy + 3} textAnchor="start" fontSize="10" fill="var(--text-subtle)">{labels[1]}</text>
+      <text x={cx} y={cy + R + 14} textAnchor="middle" fontSize="10" fill="var(--text-subtle)">{labels[2]}</text>
+      <text x={cx - R - 6} y={cy + 3} textAnchor="end" fontSize="10" fill="var(--text-subtle)">{labels[3]}</text>
+    </svg>
+  );
+}
+
+/** Score radar — `data` is [{ axis, value }] on a 0–100 scale. */
+export function ScoreRadar({ data, height = 240, color = '#6366f1' }) {
+  const hasValues = data.some((d) => (d.value || 0) > 0);
+  if (!hasValues) return <EmptyRadar data={data} height={height} />;
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <RadarChart data={data} outerRadius="70%">
+        <PolarGrid stroke="var(--border)" />
+        <PolarAngleAxis dataKey="axis" tick={{ fill: 'var(--text-subtle)', fontSize: 11 }} />
+        <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+        <Radar dataKey="value" stroke={color} fill={color} fillOpacity={0.25} strokeWidth={2} isAnimationActive={false} />
+        <Tooltip content={<ChartTooltip valueSuffix="%" />} cursor={false} />
+      </RadarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function ComparisonBar({ data, keys, height = 260, suffix = '' }) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }} barGap={4}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="label" {...axisProps} interval={0} angle={-12} textAnchor="end" height={48} />
+        <YAxis {...axisProps} />
+        <Tooltip content={<ChartTooltip valueSuffix={suffix} />} cursor={{ fill: 'var(--surface-hover)' }} />
+        <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+        {keys.map((k, i) => (
+          <Bar key={k.key} dataKey={k.key} name={k.name} fill={k.color || CHART_COLORS[i]} radius={[4, 4, 0, 0]} maxBarSize={26} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function TrendArea({ data, dataKey, name, color = '#16a79a', height = 240, suffix = '' }) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis dataKey="label" {...axisProps} />
+        <YAxis {...axisProps} allowDecimals={false} />
+        <Tooltip content={<ChartTooltip valueSuffix={suffix} />} />
+        <Area type="monotone" dataKey={dataKey} name={name} stroke={color} strokeWidth={2.5} fill={`url(#grad-${dataKey})`} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function Sparkline({ data = [], color = '#7C3AED', height = 38, id, bleed = false }) {
+  const points = data.map((v, i) => ({ i, v }));
+  const gid = `spark-${id || color.replace('#', '')}-${bleed ? 'b' : 's'}`;
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart data={points} margin={{ top: bleed ? 5 : 3, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={bleed ? 0.34 : 0.28} />
+            <stop offset="100%" stopColor={color} stopOpacity={bleed ? 0.02 : 0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={2}
+          fill={`url(#${gid})`}
+          dot={false}
+          activeDot={false}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function MiniBars({ data = [], color = '#7C3AED', height = 38, bleed = false }) {
+  const points = data.map((v, i) => ({ i, v }));
+  const last = points.length - 1;
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={points} margin={{ top: bleed ? 5 : 3, right: 1, left: 1, bottom: 0 }} barCategoryGap={bleed ? '18%' : 2}>
+        <Bar dataKey="v" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+          {points.map((_, i) => (
+            <Cell key={i} fill={color} fillOpacity={i === last ? 1 : 0.42} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function HBar({ data, height = 260 }) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }} barGap={2}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+        <XAxis type="number" {...axisProps} allowDecimals={false} />
+        <YAxis type="category" dataKey="label" {...axisProps} width={92} />
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--surface-hover)' }} />
+        <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+        <Bar dataKey="open" name="Open" stackId="a" fill="#16a79a" radius={[0, 0, 0, 0]} maxBarSize={20} />
+        <Bar dataKey="overdue" name="Overdue" stackId="a" fill="#f43f5e" radius={[0, 4, 4, 0]} maxBarSize={20} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid };
